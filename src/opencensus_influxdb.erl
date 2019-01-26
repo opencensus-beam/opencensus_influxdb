@@ -28,7 +28,7 @@ build_tags(Tags) ->
     lists:join($,, List).
 
 normalise(Atom) when is_atom(Atom) ->
-    normalise(erlang:atom_to_binary(Atom, utf8), <<>>);
+    normalise(erlang:atom_to_list(Atom, utf8), <<>>);
 normalise(String) when is_list(String) ->
     normalise(erlang:list_to_binary(String), <<>>);
 normalise(String) when is_binary(String) -> normalise(String, <<>>).
@@ -38,6 +38,7 @@ normalise(<<",", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\,
 normalise(<<" ", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\ ">>);
 normalise(<<"=", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\=">>);
 normalise(<<"\"", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\\"">>);
+normalise(<<"/", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "_">>);
 normalise(<<C, Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, C>>).
 
 values(sum, #{count := Count,
