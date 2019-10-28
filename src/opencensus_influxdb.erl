@@ -5,10 +5,10 @@
 build_metrics(Data) when is_list(Data) ->
     lists:join($\n, [build_metrics(Entry) || Entry <- Data]);
 build_metrics(#{name := Name,
-               ctags := CTags,
-               tags := Tags,
-               data := #{type := Type,
-                         rows := Rows}}) ->
+                ctags := CTags,
+                tags := Tags,
+                data := #{type := Type,
+                          rows := Rows}}) ->
     TS = erlang:integer_to_binary(os:system_time(seconds)),
     Key = normalise(Name),
     Metrics = [build_row(Key, Type, TS, {CTags, Tags}, Row) || Row <- Rows],
@@ -16,10 +16,14 @@ build_metrics(#{name := Name,
 
 build_row(Key, Type, TS, {CTags, Tags}, #{tags := TagsV, value := Value}) ->
     Values = lists:join($,, values(Type, Value)),
-    [Key, $,, build_tags(Tags, TagsV, CTags), $\ , Values, $\ , TS].
+    TagsField = case build_tags(Tags, TagsV, CTags) of
+               [] -> [];
+               Other -> [$,, Other]
+           end,
+    [Key, TagsField, $\ , Values, $\ , TS].
 
 build_tags(Tags, TagsV, CTags) ->
-  build_tags(maps:merge(CTags, maps:from_list(lists:zip(Tags, TagsV)))).
+    build_tags(maps:merge(CTags, maps:from_list(lists:zip(Tags, TagsV)))).
 
 build_tags(Map) when is_map(Map) -> build_tags(maps:to_list(Map));
 build_tags([]) -> [];
@@ -38,6 +42,9 @@ normalise(<<",", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\,
 normalise(<<" ", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\ ">>);
 normalise(<<"=", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\=">>);
 normalise(<<"\"", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "\\\"">>);
+% OpenCensus use backslash as a general purpose separator in metric names,
+% InfluxDB uses underscore for that, that is why we change backslash to
+% underscore instead of escaping like everythoing else.
 normalise(<<"/", Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, "_">>);
 normalise(<<C, Rest/binary>>, Result) -> normalise(Rest, <<Result/binary, C>>).
 
